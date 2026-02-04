@@ -3,6 +3,16 @@
 # Supervisely Disk Usage Check Script
 # This script analyzes disk usage and Docker resource consumption
 
+# Detect if sudo is needed for docker commands
+DOCKER_CMD="docker"
+if ! docker ps >/dev/null 2>&1; then
+    if sudo docker ps >/dev/null 2>&1; then
+        DOCKER_CMD="sudo docker"
+        echo "Note: Using 'sudo' for Docker commands"
+        echo ""
+    fi
+fi
+
 echo "================================================"
 echo "DISK USAGE ANALYSIS"
 echo "================================================"
@@ -20,12 +30,12 @@ echo ""
 
 echo "Overall Docker disk usage:"
 echo "----------------------------"
-docker system df
+$DOCKER_CMD system df
 echo ""
 
 echo "Detailed Docker disk usage:"
 echo "----------------------------"
-docker system df -v
+$DOCKER_CMD system df -v
 echo ""
 
 echo "================================================"
@@ -35,7 +45,7 @@ echo ""
 
 echo "Space occupied by dangling images (not linked to containers):"
 echo "---------------------------------------------------------------"
-DANGLING_SIZE=$(docker images -f "dangling=true" -q | xargs -r docker inspect --format='{{.Size}}' 2>/dev/null | awk '{sum+=$1} END {print sum/1024/1024/1024}')
+DANGLING_SIZE=$($DOCKER_CMD images -f "dangling=true" -q | xargs -r $DOCKER_CMD inspect --format='{{.Size}}' 2>/dev/null | awk '{sum+=$1} END {print sum/1024/1024/1024}')
 if [ -z "$DANGLING_SIZE" ]; then
     echo "0 GB"
 else
@@ -44,7 +54,7 @@ fi
 echo ""
 
 echo "List of dangling images:"
-docker images -f "dangling=true"
+$DOCKER_CMD images -f "dangling=true"
 echo ""
 
 echo "================================================"
@@ -52,14 +62,14 @@ echo "STOPPED SLY-TASK CONTAINERS"
 echo "================================================"
 echo ""
 
-STOPPED_COUNT=$(docker ps -a -f "status=exited" -f "name=sly-task" --format "{{.Names}}" | wc -l)
+STOPPED_COUNT=$($DOCKER_CMD ps -a -f "status=exited" -f "name=sly-task" --format "{{.Names}}" | wc -l)
 echo "Number of stopped sly-task containers: $STOPPED_COUNT"
 echo ""
 
 if [ $STOPPED_COUNT -gt 0 ]; then
     echo "List of stopped sly-task containers:"
     echo "-------------------------------------"
-    docker ps -a -f "status=exited" -f "name=sly-task" --format "table {{.ID}}\t{{.Names}}\t{{.Status}}\t{{.Size}}"
+    $DOCKER_CMD ps -a -f "status=exited" -f "name=sly-task" --format "table {{.ID}}\t{{.Names}}\t{{.Status}}\t{{.Size}}"
 fi
 echo ""
 
